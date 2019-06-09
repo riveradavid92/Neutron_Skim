@@ -59,17 +59,13 @@ unsigned char ProcessToKey(std::string const& process)
   int key = 0;
   
   if     (process.compare("hadElastic")            == 0) key = 1;
-  else if(process.compare("pi-Inelastic")          == 0) key = 2;
-  else if(process.compare("pi+Inelastic")          == 0) key = 3;
-  else if(process.compare("kaon-Inelastic")        == 0) key = 4;
-  else if(process.compare("kaon+Inelastic")        == 0) key = 5;
-  else if(process.compare("protonInelastic")       == 0) key = 6;
-  else if(process.compare("neutronInelastic")      == 0) key = 7;
-  else if(process.compare("nCapture")              == 0) key = 8;
-  else if(process.compare("nKiller")               == 0) key = 9;  
-  else if(process.compare("FastScintillation")     == 0) key =10;
-  else if(process.compare("CoupledTransportation") == 0) key =11;
-  else if(process.compare("Transportation")        == 0) key =12;
+  else if(process.compare("neutronInelastic")      == 0) key = 2;
+  else if(process.compare("nCapture")              == 0) key = 3;
+  else if(process.compare("chargeExchange")        == 0) key = 4;  
+  else if(process.compare("FastScintillation")     == 0) key = 5;
+  else if(process.compare("CoupledTransportation") == 0) key = 6;
+  else if(process.compare("Transportation")        == 0) key = 7;
+  else if(process.compare("nKiller")               == 0) key = 8;  
   return key;
 }
 
@@ -79,17 +75,13 @@ std::string KeyToProcess(unsigned char const& key)
   std::string process("Unknown");
   
   if     (key == 1) process  = "hadElastic";
-  else if(key == 2) process  = "pi-Inelastic";
-  else if(key == 3) process  = "pi+Inelastic";
-  else if(key == 4) process  = "kaon-Inelastic";
-  else if(key == 5) process  = "kaon+Inelastic";
-  else if(key == 6) process  = "protonInelastic";
-  else if(key == 7) process  = "neutronInelastic";
-  else if(key == 8) process  = "nCapture";
-  else if(key == 9) process  = "nKiller";
-  else if(key == 10) process = "FastScintillation";
-  else if(key == 11) process = "CoupledTransportation";
-  else if(key == 12) process = "Transportation";
+  else if(key == 2) process  = "neutronInelastic";
+  else if(key == 3) process  = "nCapture";
+  else if(key == 4) process  = "chargeExchange";
+  else if(key == 5) process  = "Transportation";
+  else if(key == 6) process  = "CoupledTransportation";
+  else if(key == 7) process  = "FastScintillation";
+  else if(key == 8) process  = "nKiller"; 
   return process;
 }
 
@@ -354,7 +346,6 @@ int main(int argc, char* argv[])
     }
   }
 
-
   InputTag Truth_tag  { "generator" };
   InputTag Cosmic_tag { "cosmicgenerator" };
   InputTag Sim_tag    { "largeant"  };
@@ -431,9 +422,56 @@ int main(int argc, char* argv[])
 	    << "Event " << event << endl;
 
 
-    auto const& Truth_handle        = ev.getValidHandle<vector<simb::MCTruth>>(Truth_tag);
-    auto const& Sim_handle          = ev.getValidHandle<vector<sim::SimChannel>>("elecDrift");
-    auto const& Parts_handle        = ev.getValidHandle<vector<simb::MCParticle>>(Sim_tag);
+    auto const& Truth_handle = ev.getValidHandle<vector<simb::MCTruth>>(Truth_tag);
+    auto const& Parts_handle = ev.getValidHandle<vector<simb::MCParticle>>(Sim_tag);
+    ///auto const& Sim_handle = ev.getValidHandle<vector<sim::SimChannel>>(Sim_tag);
+    //auto const& Sim_handle = ev.getValidHandle<vector<sim::SimChannel>>("elecDrift");
+
+    auto const& Truth_vec(*Truth_handle);
+    auto const& Parts_vec(*Parts_handle);
+    //auto const& Sim_vec(*Sim_handle);
+
+    //check for refactored product for SimChannel
+    bool isFromRefactored = true;
+    try{                                                                                          
+      //auto const& Sim_handle = ev.getValidHandle<vector<sim::SimChannel>>("elecDrift");
+      ev.getValidHandle<vector<sim::SimChannel>>("elecDrift");
+      //auto const& Sim_vec(*Sim_handle);
+    }                                                                                         
+    //catch(int exception){
+    catch(...){
+      cout << "Failed to get a valid Handle for: vector<<sim::SimChannel>> from elecDrift module" 
+           << endl;
+      isFromRefactored = false; 
+    }        
+
+    //gallery::ValidHandle< std::vector<sim::SimChannel>>& Sim_handle = NULL;
+    //gallery::ValidHandle< std::vector<sim::SimChannel>>& Sim_handle = 0;
+    //gallery::ValidHandle< std::vector<sim::SimChannel>> Sim_handle = 0;
+    //const std::vector<sim::SimChannel>& Sim_vec = 0;
+    //const std::vector<sim::SimChannel> Sim_vec&;
+    std::vector<sim::SimChannel> Sim_vec;
+    if (isFromRefactored) {
+      auto const& Sim_handle = ev.getValidHandle<vector<sim::SimChannel>>("elecDrift");
+      //Sim_handle = ev.getValidHandle<vector<sim::SimChannel>>("elecDrift");
+      auto const& Sim_vec1(*Sim_handle);
+      Sim_vec = Sim_vec1;
+      //auto const& Sim_vec(* (ev.getValidHandle<vector<sim::SimChannel>>("elecDrift")) );
+      //Sim_vec = &(*(ev.getValidHandle<vector<sim::SimChannel>>("elecDrift")));
+    } else {
+      //default    
+      auto const& Sim_handle = ev.getValidHandle<vector<sim::SimChannel>>(Sim_tag);
+      //Sim_handle = ev.getValidHandle<vector<sim::SimChannel>>(Sim_tag);
+      //auto const& Sim_vec(*Sim_handle);
+      auto const& Sim_vec2(*Sim_handle);
+      Sim_vec = Sim_vec2;
+      //auto const& Sim_vec(* (ev.getValidHandle<vector<sim::SimChannel>>(Sim_tag)) );
+      //Sim_vec = &(*(ev.getValidHandle<vector<sim::SimChannel>>(Sim_tag)));
+    }
+
+    //default    
+    //auto const& Sim_handle = ev.getValidHandle<vector<sim::SimChannel>>(Sim_tag);
+    //auto const& Sim_vec(*Sim_handle);
 
     //From FindMany.h :
     //
@@ -468,8 +506,8 @@ int main(int argc, char* argv[])
     //the neutron samples have: 'art::Assns<simb::MCTruth,simb::MCParticle,sim::GeneratedParticleInfo>' 
     //need to include the GeneratedParticleInfo, into the FindMany structure, art complains otherwise
     //
-    ///FindMany<simb::MCParticle, sim::GeneratedParticleInfo> part_truth(Truth_handle,ev,Sim_tag);
-    FindMany<simb::MCParticle> part_truth(Truth_handle,ev,Sim_tag);
+    FindMany<simb::MCParticle, sim::GeneratedParticleInfo> part_truth(Truth_handle,ev,Sim_tag);
+    ///<--FindMany<simb::MCParticle> part_truth(Truth_handle,ev,Sim_tag);
     //associations between MCTruth and simb objects
     for (size_t i_part = 0, size_part = Truth_handle->size(); i_part != size_part; ++i_part){
       std::vector<simb::MCParticle const*> truth_vec;
@@ -478,10 +516,6 @@ int main(int argc, char* argv[])
         ID_vec.push_back(truth_vec.at(i)->TrackId());
       }
     }
-
-    auto const& Truth_vec(*Truth_handle);
-    auto const& Sim_vec(*Sim_handle);
-    auto const& Parts_vec(*Parts_handle);
 
     //loop over fasthit tags
     for (unsigned int j=0; j < tags.size(); ++j){
