@@ -58,7 +58,7 @@ TEST_OUT=$(TEST_DIR)/$(TEST_NAME)
 
 #Neutron_Skim: Neutron_Skim.cc 
 $(OUT): $(MAIN_SRC)
-	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $<
+	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) $(INCLUDEDIR) -o $@ $<
 
 #Neutron: Neutron.cc
 $(TEST_OUT): $(TEST_SRC)

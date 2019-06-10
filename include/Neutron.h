@@ -98,7 +98,7 @@ Neutron( simb::MCParticle N ) : particle{},
 
 Neutron::
 Neutron(const Neutron &cN) : particle{}, 
-                             Np{std::make_unique<simb::MCParticle>(*cN.Np)},
+                             Np{ std::make_unique<simb::MCParticle>(*cN.Np) },
                              Nt{ std::make_unique<simb::MCTrajectory>(Np->Trajectory()) },
                              depositedEnergy{0.0},
                              trackLength{0.0},

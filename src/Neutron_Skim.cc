@@ -39,6 +39,9 @@
 //"dunetpc" object includes
 #include "dune/EventGenerator/ProtoDUNEbeamDataProducts/ProtoDUNEbeamsim.h"
 
+//my Neutron class
+#include "Neutron.h"
+
 //convenient for us! let's not bother with art and std namespaces!
 using namespace art;
 using namespace std;
