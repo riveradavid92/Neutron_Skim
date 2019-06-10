@@ -62,9 +62,9 @@ unsigned char ProcessToKey(std::string const& process)
   else if(process.compare("neutronInelastic")      == 0) key = 2;
   else if(process.compare("nCapture")              == 0) key = 3;
   else if(process.compare("chargeExchange")        == 0) key = 4;  
-  else if(process.compare("FastScintillation")     == 0) key = 5;
+  else if(process.compare("Transportation")        == 0) key = 5;
   else if(process.compare("CoupledTransportation") == 0) key = 6;
-  else if(process.compare("Transportation")        == 0) key = 7;
+  else if(process.compare("FastScintillation")     == 0) key = 7;
   else if(process.compare("nKiller")               == 0) key = 8;  
   return key;
 }
@@ -350,7 +350,24 @@ int main(int argc, char* argv[])
   InputTag Cosmic_tag { "cosmicgenerator" };
   InputTag Sim_tag    { "largeant"  };
   InputTag fast_hit_tag;
- 
+
+  //* Check what module produced the SimChannel information
+  //* In refactored larsoft it is the elecDrift module
+  //* In the standard larsoft it is the largeant module, this is the default
+  //* so it suffices to check whether elecDrift has a valid handle to 
+  bool isFromRefactored = true;
+  try{ //* art(gallery) will throw an exception if it can't get a valid handle
+    gallery::Event ev(filename);
+    ev.getValidHandle<vector<sim::SimChannel>>("elecDrift");
+    cout << "Found sim::SimChannel from elecDrift module" << endl;
+    isFromRefactored = true;
+  }                                                                                         
+  catch(...){
+    cout << "Failed to get a valid Handle for: vector<<sim::SimChannel>> from elecDrift module\n" 
+         << "Defaulting to largeant for the SimChannel info." << endl;
+    isFromRefactored = false; 
+  }
+        
   int iterator = -1;
   //ok, now for the event loop! Here's how it works.
   //
@@ -363,11 +380,11 @@ int main(int argc, char* argv[])
   //In a for loop, that looks like this:
   r_it = 0;
   for (gallery::Event ev(filename) ; !ev.atEnd(); ev.next()) {
-    //initialization on per-event-basis
-    //Vis_E = 0;
+    //* initialization on per-event-basis
     int ks = 0; //index for secondary tracks 
     
-    //scalars
+    //* scalars
+    //Vis_E = 0;
     OLD_vis_E    = 0;
     truth_vis_E  = 0;
     test_energy  = 0;
@@ -375,7 +392,7 @@ int main(int argc, char* argv[])
     PDG.clear();
     isPrimary.clear();
 
-    //primary vectors
+    //* primary vectors
     NScatter.clear();
     deltaE.clear();
     Frac_E_Loss.clear();
@@ -384,7 +401,7 @@ int main(int argc, char* argv[])
     scatter_Y.clear();
     scatter_Z.clear();
 
-    //secondary vectors
+    //* secondary vectors
     secprocesskey.clear();
     secprocessname.clear();
     secendprocesskey.clear();
@@ -401,77 +418,44 @@ int main(int argc, char* argv[])
     sec_scatter_X.clear();
     sec_scatter_Y.clear();
     sec_scatter_Z.clear();
-    //
 
     ID_vec.clear();
     ++iterator;
 
-    
-    //Now, we want to get a "valid handle" (which is like a pointer to our collection")
-    //We use auto, cause it's annoying to write out the fill type. But it's like
-    //vector<recob::Hit>* object.
+    //* Now, we want to get a "valid handle" (which is like a pointer to our collection")
+    //* We use auto, cause it's annoying to write out the fill type. But it's like
+    //* vector<recob::Hit>* object.
     
     run = ev.eventAuxiliary().run();
     event = ev.eventAuxiliary().event();
     run = run_numbers.at(int(r_it/EvtsPerRun));
 
-    //to get run and event info, you use this "eventAuxillary()" object.
+    //* to get run and event info, you use this "eventAuxillary()" object.
     cout << "" << endl;
     cout << "Processing "
 	    << "Run "   << run   << ", "
 	    << "Event " << event << endl;
 
-
+    //* get valid handles to products needed for particle skimming
     auto const& Truth_handle = ev.getValidHandle<vector<simb::MCTruth>>(Truth_tag);
     auto const& Parts_handle = ev.getValidHandle<vector<simb::MCParticle>>(Sim_tag);
-    ///auto const& Sim_handle = ev.getValidHandle<vector<sim::SimChannel>>(Sim_tag);
-    //auto const& Sim_handle = ev.getValidHandle<vector<sim::SimChannel>>("elecDrift");
 
+    //* dereference handles into vector objects
     auto const& Truth_vec(*Truth_handle);
     auto const& Parts_vec(*Parts_handle);
-    //auto const& Sim_vec(*Sim_handle);
 
-    //check for refactored product for SimChannel
-    bool isFromRefactored = true;
-    try{                                                                                          
-      //auto const& Sim_handle = ev.getValidHandle<vector<sim::SimChannel>>("elecDrift");
-      ev.getValidHandle<vector<sim::SimChannel>>("elecDrift");
-      //auto const& Sim_vec(*Sim_handle);
-    }                                                                                         
-    //catch(int exception){
-    catch(...){
-      cout << "Failed to get a valid Handle for: vector<<sim::SimChannel>> from elecDrift module" 
-           << endl;
-      isFromRefactored = false; 
-    }        
 
-    //gallery::ValidHandle< std::vector<sim::SimChannel>>& Sim_handle = NULL;
-    //gallery::ValidHandle< std::vector<sim::SimChannel>>& Sim_handle = 0;
-    //gallery::ValidHandle< std::vector<sim::SimChannel>> Sim_handle = 0;
-    //const std::vector<sim::SimChannel>& Sim_vec = 0;
-    //const std::vector<sim::SimChannel> Sim_vec&;
     std::vector<sim::SimChannel> Sim_vec;
     if (isFromRefactored) {
       auto const& Sim_handle = ev.getValidHandle<vector<sim::SimChannel>>("elecDrift");
-      //Sim_handle = ev.getValidHandle<vector<sim::SimChannel>>("elecDrift");
       auto const& Sim_vec1(*Sim_handle);
       Sim_vec = Sim_vec1;
-      //auto const& Sim_vec(* (ev.getValidHandle<vector<sim::SimChannel>>("elecDrift")) );
-      //Sim_vec = &(*(ev.getValidHandle<vector<sim::SimChannel>>("elecDrift")));
     } else {
-      //default    
+      //* default    
       auto const& Sim_handle = ev.getValidHandle<vector<sim::SimChannel>>(Sim_tag);
-      //Sim_handle = ev.getValidHandle<vector<sim::SimChannel>>(Sim_tag);
-      //auto const& Sim_vec(*Sim_handle);
       auto const& Sim_vec2(*Sim_handle);
       Sim_vec = Sim_vec2;
-      //auto const& Sim_vec(* (ev.getValidHandle<vector<sim::SimChannel>>(Sim_tag)) );
-      //Sim_vec = &(*(ev.getValidHandle<vector<sim::SimChannel>>(Sim_tag)));
     }
-
-    //default    
-    //auto const& Sim_handle = ev.getValidHandle<vector<sim::SimChannel>>(Sim_tag);
-    //auto const& Sim_vec(*Sim_handle);
 
     //From FindMany.h :
     //
@@ -505,19 +489,35 @@ int main(int argc, char* argv[])
     //
     //the neutron samples have: 'art::Assns<simb::MCTruth,simb::MCParticle,sim::GeneratedParticleInfo>' 
     //need to include the GeneratedParticleInfo, into the FindMany structure, art complains otherwise
-    //
-    FindMany<simb::MCParticle, sim::GeneratedParticleInfo> part_truth(Truth_handle,ev,Sim_tag);
-    ///<--FindMany<simb::MCParticle> part_truth(Truth_handle,ev,Sim_tag);
-    //associations between MCTruth and simb objects
-    for (size_t i_part = 0, size_part = Truth_handle->size(); i_part != size_part; ++i_part){
-      std::vector<simb::MCParticle const*> truth_vec;
-      part_truth.get(i_part,truth_vec);
-      for (unsigned int i=0; i < truth_vec.size(); ++i){
-        ID_vec.push_back(truth_vec.at(i)->TrackId());
+
+    //* Grab the right association
+    //<--art::FindMany< simb::MCParticle, void > part_truth(Truth_handle,ev,Sim_tag); //default
+    //<--art::FindMany< simb::MCParticle, sim::GeneratedParticleInfo > part_truth(Truth_handle,ev,Sim_tag); //refactored 
+    std::vector<simb::MCParticle const*> truth_vec;
+    if (isFromRefactored) {
+      FindMany<simb::MCParticle, void> part_truth(Truth_handle,ev,Sim_tag);
+      //associations between MCTruth and simb objects
+      for (size_t i_part = 0, size_part = Truth_handle->size(); i_part != size_part; ++i_part){
+        std::vector<simb::MCParticle const*> truth_vec;
+        part_truth.get(i_part,truth_vec);
+        for (unsigned int i=0; i < truth_vec.size(); ++i){
+          ID_vec.push_back(truth_vec.at(i)->TrackId());
+        }
+      }
+    } else { //* default
+      FindMany<simb::MCParticle, sim::GeneratedParticleInfo> part_truth(Truth_handle,ev,Sim_tag);
+      //associations between MCTruth and simb objects
+      for (size_t i_part = 0, size_part = Truth_handle->size(); i_part != size_part; ++i_part){
+        std::vector<simb::MCParticle const*> truth_vec;
+        part_truth.get(i_part,truth_vec);
+        for (unsigned int i=0; i < truth_vec.size(); ++i){
+          ID_vec.push_back(truth_vec.at(i)->TrackId());
+        }
       }
     }
 
-    //loop over fasthit tags
+
+    //* loop over fasthit tags
     for (unsigned int j=0; j < tags.size(); ++j){
       tag = "fasthit"+tags.at(j);
       fast_hit_tag = {(string)tag.Data()};
@@ -534,19 +534,17 @@ int main(int argc, char* argv[])
     }
 
  
-    //should always be code for a neutron 2112
-    //truth_id = Truth_vec.at(0).GetParticle(0).PdgCode();
+    //* should always be code for a neutron 2112
     double Mneutron = Truth_vec.at(0).GetParticle(0).Mass(); 
     E0 = (Parts_vec.at(0).E(0) - Mneutron)*1000; //starting KE [MeV] of primary
     double KEf = 0.0;
 
-    //end position in the generation stage
-    //is particle 0 the beam particle in PD?
+    //* end position in the generation stage
     vtx_x = Truth_vec.at(0).GetParticle(0).EndX();
     vtx_y = Truth_vec.at(0).GetParticle(0).EndY();
     vtx_z = Truth_vec.at(0).GetParticle(0).EndZ();
 
-    //end position in the geant propagation stage
+    //* end position in the geant propagation stage
     End_X = Parts_vec.at(0).EndX();
     End_Y = Parts_vec.at(0).EndY();
     End_Z = Parts_vec.at(0).EndZ();
@@ -557,7 +555,7 @@ int main(int argc, char* argv[])
       int pid = Parts_vec.at(i).PdgCode();
       PDG.push_back(pid);
 
-      if (i==0) { //primary neutron ->this does not work for anything other than single neutrons produced with particle gun
+      if (i==0) { //* primary neutron ->this does not work for anything other than single neutrons produced with particle gun
 
         isPrimary.push_back(true);
         neutron = Parts_vec.at(i); 
@@ -579,10 +577,10 @@ int main(int argc, char* argv[])
         cout << "Starting Energy of Primary Neutron  = " << prevE*1000 << "MeV" << endl;
         cout << "Starting Kinetic Energy of Primary  = " << E0 << "MeV" << endl;
         
-        //Loop over each trajectory and log changes in energy
+        //* Loop over each trajectory and log changes in energy
         double del = 0.0;
         for (int j = 1; j < NumTrajPoints ; ++j) {
-          //scatter position
+          //* scatter position
           //primTraj = neutron.Trajectory();
           scatter_X.push_back(neutron.Vx(j));
           scatter_Y.push_back(neutron.Vy(j));
