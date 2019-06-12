@@ -32,6 +32,9 @@
 #include "lardataobj/Simulation/SimChannel.h"
 #include "larsim/MCCheater/BackTracker.h"
 
+#include "larcore/Geometry/Geometry.h"
+#include "lardata/DetectorInfoServices/DetectorPropertiesService.h"
+#include "lardata/DetectorInfoServices/DetectorClocksService.h"
 
 //convenient for us! let's not bother with art and std namespaces!
 using namespace art;
@@ -57,10 +60,13 @@ namespace MCAna {
     unsigned int  NScatters()  { nScatters = Np->NumberTrajectoryPoints(); return nScatters; }
     Double_t DepositedEnergy(); // { return depositedEnergy; }
     Double_t TrackLength();     //{ return trackLength;     }
-    bool Contained()           { return isContained;     }
+    bool Contained();           //{ return isContained;     }
   private: 
     const int NeutronPDG = 2112;
     bool ValidNeutron();
+    double ActiveBounds[6]; // Cryostat boundaries ( neg x, pos x, neg y, pos y, neg z, pos z )
+    double fFidVolCut = 0.2;
+
   }; //Neutron class
 
 
@@ -121,7 +127,8 @@ Show()
   if(!isValid){
     cerr << "Cannot print info for invalid Neutron!\n";
   } else {
-    cout << particle; 
+    //cout << particle << endl; 
+    cout << *Np << endl; 
   }
 }
 
@@ -133,6 +140,148 @@ TrackLength()
     return Nt->TotalLength();
   //}
 }
+
+bool Neutron::
+Contained()
+{
+  const double posX = Np->EndX();
+  const double posY = Np->EndY();
+  const double posZ = Np->EndZ();  
+
+  art::ServiceHandle<geo::Geometry> geom;                                                           
+  double vtx[3] = {posX, posY, posZ};                                                               
+  bool inside = false;                                                                              
+                                                                                                    
+  geo::TPCID idtpc = geom->FindTPCAtPosition(vtx);                                                  
+                                                                                                    
+  if (geom->HasTPC(idtpc))                                                                          
+  {                                                                                                 
+    const geo::TPCGeo& tpcgeo = geom->GetElement(idtpc);                                            
+    double minx = tpcgeo.MinX(); double maxx = tpcgeo.MaxX();                                       
+    double miny = tpcgeo.MinY(); double maxy = tpcgeo.MaxY();                                       
+    double minz = tpcgeo.MinZ(); double maxz = tpcgeo.MaxZ();                                       
+                                                                                                    
+    for (size_t c = 0; c < geom->Ncryostats(); c++)                                                 
+    {                                                                                               
+      const geo::CryostatGeo& cryostat = geom->Cryostat(c);                                         
+      for (size_t t = 0; t < cryostat.NTPC(); t++)                                                  
+      {                                                                                             
+        const geo::TPCGeo& tpcg = cryostat.TPC(t);                                                  
+        if (tpcg.MinX() < minx) minx = tpcg.MinX();                                                 
+        if (tpcg.MaxX() > maxx) maxx = tpcg.MaxX();                                                 
+        if (tpcg.MinY() < miny) miny = tpcg.MinY();                                                 
+        if (tpcg.MaxY() > maxy) maxy = tpcg.MaxY();                                                 
+        if (tpcg.MinZ() < minz) minz = tpcg.MinZ();                                                 
+        if (tpcg.MaxZ() > maxz) maxz = tpcg.MaxZ();                                                 
+      }                                                                                             
+    }                                                                                               
+                                                                                                    
+                                                                                                    
+    //x                                                                                             
+    double dista = fabs(minx - posX);                                                               
+    double distb = fabs(posX - maxx);                                                               
+    if ((posX > minx) && (posX < maxx) &&                                                           
+      (dista > fFidVolCut) && (distb > fFidVolCut)) inside = true;                                  
+                                                                                                    
+    //y                                                                                             
+    dista = fabs(maxy - posY);                                                                      
+    distb = fabs(posY - miny);                                                                      
+    if (inside && (posY > miny) && (posY < maxy) &&                                                 
+      (dista > fFidVolCut) && (distb > fFidVolCut)) inside = true;                                  
+    else inside = false;                                                                            
+                                                                                                    
+    //z                                                                                             
+    dista = fabs(maxz - posZ);                                                                      
+    distb = fabs(posZ - minz);                                                                      
+    if (inside && (posZ > minz) && (posZ < maxz) &&                                                 
+      (dista > fFidVolCut) && (distb > fFidVolCut)) inside = true;                                  
+    else inside = false;                                                                            
+  }                                                                                                 
+                                                                                                    
+  return inside;                                                                                    
+}                                                       
+  //auto const* geom = lar::providerFrom<geo::Geometry>();
+  //auto const* detprop = lar::providerFrom<detinfo::DetectorPropertiesService>();
+/*
+  art::ServiceHandle<geo::Geometry> geom;
+  //auto const *detprop = lar::providerFrom<detinfo::DetectorPropertiesService>();
+  // Build my Cryostat boundaries array...Taken from Tyler Alion in Geometry Core.
+  ActiveBounds[0] = ActiveBounds[2] = ActiveBounds[4] = DBL_MAX;
+  ActiveBounds[1] = ActiveBounds[3] = ActiveBounds[5] = -DBL_MAX;
+  // assume single cryostats
+  //auto const* geom = lar::providerFrom<geo::Geometry>();
+  for (geo::TPCGeo const& TPC: geom->IterateTPCs()) {
+    // get center in world coordinates
+    double origin[3] = {0.};
+    double center[3] = {0.};
+    TPC.LocalToWorld(origin, center);
+    double tpcDim[3] = {TPC.HalfWidth(), TPC.HalfHeight(), 0.5*TPC.Length() };
+ 
+    if( center[0] - tpcDim[0] < ActiveBounds[0] ) ActiveBounds[0] = center[0] - tpcDim[0];
+    if( center[0] + tpcDim[0] > ActiveBounds[1] ) ActiveBounds[1] = center[0] + tpcDim[0];
+    if( center[1] - tpcDim[1] < ActiveBounds[2] ) ActiveBounds[2] = center[1] - tpcDim[1];
+    if( center[1] + tpcDim[1] > ActiveBounds[3] ) ActiveBounds[3] = center[1] + tpcDim[1];
+    if( center[2] - tpcDim[2] < ActiveBounds[4] ) ActiveBounds[4] = center[2] - tpcDim[2];
+    if( center[2] + tpcDim[2] > ActiveBounds[5] ) ActiveBounds[5] = center[2] + tpcDim[2];
+  } // for all TPC
+  std::cout << "Active Boundaries: "
+            << "\n\tx: " << ActiveBounds[0] << " to " << ActiveBounds[1]
+            << "\n\ty: " << ActiveBounds[2] << " to " << ActiveBounds[3]
+            << "\n\tz: " << ActiveBounds[4] << " to " << ActiveBounds[5]
+            << std::endl;
+
+  return false;
+}
+*/
+/*
+auto const* geom = lar::providerFrom<geo::Geometry>();                                            
+auto const* detprop = lar::providerFrom<detinfo::DetectorPropertiesService>();                    
+                                                                                                  
+//compute the drift x range                                                                       
+double vDrift = detprop->DriftVelocity()*1e-3; //cm/ns                                            
+double xrange[2] = {DBL_MAX, -DBL_MAX };                                                          
+for (unsigned int c=0; c<geom->Ncryostats(); ++c) {                                               
+  for (unsigned int t=0; t<geom->NTPC(c); ++t) {                                                  
+    double Xat0 = detprop->ConvertTicksToX(0,0,t,c);                                              
+    double XatT = detprop->ConvertTicksToX(detprop->NumberTimeSamples(),0,t,c);                   
+    xrange[0] = std::min(std::min(Xat0, XatT), xrange[0]);                                        
+    xrange[1] = std::max(std::max(Xat0, XatT), xrange[1]);                                        
+  }                                                                                               
+}                                                                                                 
+                                                                                                  
+double result = 0.;                                                                               
+TVector3 disp;                                                                                    
+bool first = true;                                                                                
+                                                                                                  
+for(unsigned int i = 0; i < p.NumberTrajectoryPoints(); ++i) {                                    
+  // check if the particle is inside a TPC                                                        
+  if (p.Vx(i) >= ActiveBounds[0] && p.Vx(i) <= ActiveBounds[1] &&                                 
+      p.Vy(i) >= ActiveBounds[2] && p.Vy(i) <= ActiveBounds[3] &&                                 
+      p.Vz(i) >= ActiveBounds[4] && p.Vz(i) <= ActiveBounds[5]){                                  
+    // Doing some manual shifting to account for                                                  
+    // an interaction not occuring with the beam dump                                             
+    // we will reconstruct an x distance different from                                           
+    // where the particle actually passed to to the time                                          
+    // being different from in-spill interactions                                                 
+    double newX = p.Vx(i)+(p.T(i)*vDrift);                                                        
+    if (newX < xrange[0] || newX > xrange[1]) continue;                                           
+    TLorentzVector pos(newX,p.Vy(i),p.Vz(i),p.T());                                               
+    if(first){                                                                                    
+      start = pos;                                                                                
+      starti=i;                                                                                   
+      first = false;                                                                              
+    }                                                                                             
+    else {                                                                                        
+      disp -= pos.Vect();                                                                         
+      result += disp.Mag();                                                                       
+    }                                                                                             
+    disp = pos.Vect();                                                                            
+    end = pos;                                                                                    
+    endi = i;                                                                                     
+  }                                                                                               
+}                                                                                                 
+return result;                                                                             
+*/
 
 } //namespace MCAna
 #endif

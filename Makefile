@@ -8,7 +8,6 @@ CPPFLAGS= -I $(BOOST_INC) \
           -I $(FHICLCPP_INC) \
           -I $(GALLERY_INC) \
 				  -I $(HEP_CONCURRENCY_INC) \
-          -I $(LARCOREOBJ_INC) \
           -I $(LARDATAOBJ_INC) \
           -I $(LARSIM_INC) \
           -I $(NUSIMDATA_INC) \
@@ -19,7 +18,10 @@ CPPFLAGS= -I $(BOOST_INC) \
 					-I $(ART_INC) \
 					-I $(NUTOOLS_INC) \
 					-I $(MESSAGEFACILITY_INC) \
+					-I $(LARCORE_INC) \
 					-I $(LARCOREALG_INC) \
+          -I $(LARCOREOBJ_INC) \
+					-I $(LARDATA_INC) \
 					-I $(LARDATAALG_INC) \
 					-I $(CLHEP_INC) \
 					-I $(DUNETPC_INC) 
@@ -28,16 +30,19 @@ CPPFLAGS= -I $(BOOST_INC) \
 CXXFLAGS=-std=c++14 -Wall -pedantic
 CXX=g++
 LDFLAGS=$$(root-config --libs --cflags) \
- 	        -L $(CETLIB_LIB) -l cetlib \
- 	        -L $(GALLERY_LIB) -l gallery \
- 	        -L $(NUSIMDATA_LIB) -l nusimdata_SimulationBase \
- 	        -L $(LARCOREOBJ_LIB) -l larcoreobj_SummaryData \
- 	        -L $(LARDATAOBJ_LIB) -l lardataobj_Simulation -l lardataobj_RecoBase -l lardataobj_MCBase -l lardataobj_RawData -l lardataobj_OpticalDetectorData -l lardataobj_AnalysisBase \
-					-L $(LARCOREALG_LIB) -l larcorealg_Geometry \
-					-L $(LARDATAALG_LIB) -l lardataalg_DetectorInfo \
-					-L $(FHICLCPP_LIB) -l fhiclcpp \
-					-L $(LARSIM_LIB) -l larsim_MCCheater_BackTracker -l larsim_MCCheater_ParticleInventory \
-					-L $(NUTOOLS_LIB) -l nutools_ParticleNavigation
+ 	        -L $(CETLIB_LIB) 			-l cetlib \
+ 	        -L $(GALLERY_LIB) 		-l gallery \
+ 	        -L $(NUSIMDATA_LIB) 	-l nusimdata_SimulationBase \
+ 	        -L $(LARDATAOBJ_LIB)  -l lardataobj_Simulation -l lardataobj_RecoBase -l lardataobj_MCBase -l lardataobj_RawData -l lardataobj_OpticalDetectorData -l lardataobj_AnalysisBase \
+ 	        -L $(LARCOREOBJ_LIB)  -l larcoreobj_SummaryData \
+					-L $(LARCOREALG_LIB)  -l larcorealg_Geometry \
+					-L $(LARDATAALG_LIB)  -l lardataalg_DetectorInfo \
+					-L $(FHICLCPP_LIB) 		-l fhiclcpp \
+					-L $(LARSIM_LIB) 			-l larsim_MCCheater_BackTracker -l larsim_MCCheater_ParticleInventory \
+					-L $(NUTOOLS_LIB) 		-l nutools_ParticleNavigation
+					#-L $(LARDATA_LIB)     -l lardata_DetectorInfoServices \
+					#-L $(LARCORE_LIB) 	  -l   larcore_Geometry \
+
 
 ####################################################################################################
 # Main Skim

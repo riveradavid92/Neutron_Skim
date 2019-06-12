@@ -562,6 +562,15 @@ int main(int argc, char* argv[])
 
         isPrimary.push_back(true);
         neutron = Parts_vec.at(i); 
+        //auto n1 = std::make_unique<MCAna::Neutron>(neutron);
+        MCAna::Neutron* n1 = new MCAna::Neutron(neutron);
+        cout << "Showing info for primary Neutron from MCAna class" << endl;
+        n1->Show();
+        cout << "track length for neutron is : " << ( n1->TrackLength() ) << endl;
+        if (event == 1) { n1->Contained(); }
+        cout << "Done with Neutron class\n" << endl;
+
+        cout << "Compare to normal way to print particle directly: \n" << neutron << endl;
 
         std::string proc = neutron.Process();
         processname = proc;
