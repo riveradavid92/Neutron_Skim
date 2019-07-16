@@ -144,6 +144,25 @@ TrackLength()
 bool Neutron::
 Contained()
 {
+  //* Can "determine" if neutorn is contained based on final position... 
+  //* sometimes they scatter back into the active volume, however..
+  //* ideally would like to check whether it ever leaves the active volume 
+  //* looping over the entire set of trajectory points for a neutron would be time consuming though..
+  //* Would be betst if this could be handled by g4. It does know when the particle is "transported"
+  //* out. Can perhaps just do a search over the processes and see if there is a "Transportation" or
+  //* "CoupledTransportation"
+  //* TODO:Define the enum for processes in the header
+  //* One caveat.. for most neutron samples, the neutron is generated outside the crysotat and enters
+  //* The check should apply if it enters/is produced in the active volume at all
+  //* Can perhaps define an "EntersActiveVolume()" function to check this first
+  //* Might actually be a good thing to implement in the NeutronTrackingCut actually.. that'd be a
+  //* better use for it. Not sure how slow something like that would be. Could save processing time
+  //* though, if it keeps G4 from uselessly tracking particles that never enter
+  //* that would interfere with shielding studies however.. Might still be good to track them but
+  //* tag them differently, i.e. enters and does not enter. Then the check for whether contained would
+  //* only apply to the neutrons that do enter the active volume. 
+  //* This would be a good way to extend MCParticle, hmmm. Call it SmartMCParticle.
+  //* Then this class could inherit from SmartMCParticle which itsefl would inherit from MCParticle 
   const double posX = Np->EndX();
   const double posY = Np->EndY();
   const double posZ = Np->EndZ();  
